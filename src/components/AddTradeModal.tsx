@@ -3,27 +3,46 @@
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase-client';
 import type { Trade, TradeForm } from '@/types';
-import { ShineBorder } from '@/components/magicui/shine-border';
-import { ShimmerButton } from '@/components/magicui/shimmer-button';
 
 const defaultForm: TradeForm = {
-  symbol: '',
-  direction: 'long',
-  entry_price: '',
-  exit_price: '',
-  quantity: '',
-  entry_date: new Date().toISOString().split('T')[0],
-  exit_date: '',
-  stop_loss: '',
-  risk_amount: '',
-  status: 'open',
-  notes: '',
+  symbol: '', direction: 'long', entry_price: '', exit_price: '',
+  quantity: '', entry_date: new Date().toISOString().split('T')[0],
+  exit_date: '', stop_loss: '', risk_amount: '', status: 'open', notes: '',
 };
 
-export default function AddTradeModal({
-  onClose,
-  onSaved,
-}: {
+const inputStyle = {
+  background: '#0b0e11',
+  border: '1px solid #2b3139',
+  color: '#eaecef',
+  borderRadius: 10,
+  padding: '10px 14px',
+  fontSize: 13,
+  width: '100%',
+  outline: 'none',
+  transition: 'border-color 0.15s',
+};
+
+function Field({ label, value, onChange, placeholder, required, type = 'number' }: {
+  label: string; value: string; onChange: (v: string) => void;
+  placeholder?: string; required?: boolean; type?: string;
+}) {
+  return (
+    <div>
+      <label style={{ display: 'block', fontSize: 11, color: '#848e9c', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        {label}
+      </label>
+      <input
+        type={type} value={value} onChange={e => onChange(e.target.value)}
+        placeholder={placeholder} required={required} step="any" min="0"
+        style={inputStyle}
+        onFocus={e => (e.target.style.borderColor = '#0ecb81')}
+        onBlur={e => (e.target.style.borderColor = '#2b3139')}
+      />
+    </div>
+  );
+}
+
+export default function AddTradeModal({ onClose, onSaved }: {
   onClose: () => void;
   onSaved: (trade: Trade) => void;
 }) {
@@ -32,8 +51,7 @@ export default function AddTradeModal({
   const [error, setError] = useState('');
   const supabase = createClient();
 
-  const set = (k: keyof TradeForm, v: string) =>
-    setForm(prev => ({ ...prev, [k]: v }));
+  const set = (k: keyof TradeForm, v: string) => setForm(prev => ({ ...prev, [k]: v }));
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -41,11 +59,7 @@ export default function AddTradeModal({
     setError('');
 
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setError('Non authentifié');
-      setLoading(false);
-      return;
-    }
+    if (!user) { setError('Non authentifié'); setLoading(false); return; }
 
     const payload = {
       user_id: user.id,
@@ -62,73 +76,46 @@ export default function AddTradeModal({
       notes: form.notes || null,
     };
 
-    const { data, error: err } = await supabase
-      .from('trades')
-      .insert(payload)
-      .select()
-      .single();
-
-    if (err) {
-      setError(err.message);
-      setLoading(false);
-      return;
-    }
-
+    const { data, error: err } = await supabase.from('trades').insert(payload).select().single();
+    if (err) { setError(err.message); setLoading(false); return; }
     onSaved(data as Trade);
   }
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <ShineBorder
-        className="bg-gray-900 rounded-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto"
-        shineColor={['#6366f1', '#8b5cf6', '#ec4899']}
-        borderWidth={1.5}
-      >
+      <div style={{ background: '#161a1e', border: '1px solid #2b3139', borderRadius: 16, width: '100%', maxWidth: 480, padding: 24, maxHeight: '90vh', overflowY: 'auto' }}>
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <div>
-            <h2 className="text-lg font-semibold text-white">Nouveau trade</h2>
-            <p className="text-gray-500 text-xs mt-0.5">Enregistre ta position</p>
+            <h2 style={{ color: '#eaecef', fontWeight: 700, fontSize: 16, margin: 0 }}>Nouveau trade</h2>
+            <p style={{ color: '#848e9c', fontSize: 12, margin: '3px 0 0' }}>Enregistre ta position</p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-600 hover:text-white transition-colors w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-800"
-          >
-            ✕
-          </button>
+          <button onClick={onClose}
+            style={{ color: '#848e9c', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 4 }}
+            onMouseEnter={e => (e.currentTarget.style.color = '#eaecef')}
+            onMouseLeave={e => (e.currentTarget.style.color = '#848e9c')}
+          >✕</button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {/* Symbole + Direction */}
-          <div className="grid grid-cols-2 gap-3">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Field label="Symbole" value={form.symbol} onChange={v => set('symbol', v)} placeholder="BTC, AAPL..." required />
             <div>
-              <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wide">Symbole</label>
-              <input
-                value={form.symbol}
-                onChange={e => set('symbol', e.target.value)}
-                placeholder="AAPL, BTC..."
-                required
-                className="input-field w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wide">Direction</label>
-              <div className="flex gap-2 h-[46px]">
+              <label style={{ display: 'block', fontSize: 11, color: '#848e9c', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Direction</label>
+              <div style={{ display: 'flex', gap: 8, height: 40 }}>
                 {(['long', 'short'] as const).map(d => (
-                  <button
-                    type="button"
-                    key={d}
+                  <button type="button" key={d}
                     onClick={() => set('direction', d)}
-                    className={`flex-1 rounded-xl text-sm font-semibold transition-all ${
-                      form.direction === d
-                        ? d === 'long'
-                          ? 'bg-green-900/60 text-green-400 ring-1 ring-green-700'
-                          : 'bg-red-900/60 text-red-400 ring-1 ring-red-700'
-                        : 'bg-gray-800/60 text-gray-500 hover:text-white hover:bg-gray-700/60'
-                    }`}
+                    style={{
+                      flex: 1, borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: 'none', transition: 'all 0.15s',
+                      background: form.direction === d ? (d === 'long' ? '#0ecb8120' : '#f6465d20') : '#0b0e11',
+                      color: form.direction === d ? (d === 'long' ? '#0ecb81' : '#f6465d') : '#848e9c',
+                      outline: form.direction === d ? `1px solid ${d === 'long' ? '#0ecb8150' : '#f6465d50'}` : '1px solid #2b3139',
+                    }}
                   >
                     {d === 'long' ? '▲ Long' : '▼ Short'}
                   </button>
@@ -137,77 +124,35 @@ export default function AddTradeModal({
             </div>
           </div>
 
-          {/* Prix entrée / sortie / quantité */}
-          <div className="grid grid-cols-3 gap-3">
-            <Field
-              label="Prix entrée (€)"
-              value={form.entry_price}
-              onChange={v => set('entry_price', v)}
-              placeholder="100"
-              required
-            />
-            <Field
-              label="Prix sortie (€)"
-              value={form.exit_price}
-              onChange={v => set('exit_price', v)}
-              placeholder="—"
-            />
-            <Field
-              label="Quantité"
-              value={form.quantity}
-              onChange={v => set('quantity', v)}
-              placeholder="10"
-              required
-            />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <Field label="Prix entrée (€)" value={form.entry_price} onChange={v => set('entry_price', v)} placeholder="100" required />
+            <Field label="Prix sortie (€)" value={form.exit_price} onChange={v => set('exit_price', v)} placeholder="—" />
+            <Field label="Quantité" value={form.quantity} onChange={v => set('quantity', v)} placeholder="10" required />
           </div>
 
-          {/* Dates */}
-          <div className="grid grid-cols-2 gap-3">
-            <Field
-              label="Date entrée"
-              value={form.entry_date}
-              onChange={v => set('entry_date', v)}
-              type="date"
-              required
-            />
-            <Field
-              label="Date sortie"
-              value={form.exit_date}
-              onChange={v => set('exit_date', v)}
-              type="date"
-            />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Field label="Date entrée" value={form.entry_date} onChange={v => set('entry_date', v)} type="date" required />
+            <Field label="Date sortie" value={form.exit_date} onChange={v => set('exit_date', v)} type="date" />
           </div>
 
-          {/* Stop loss + Risque */}
-          <div className="grid grid-cols-2 gap-3">
-            <Field
-              label="Stop loss (€)"
-              value={form.stop_loss}
-              onChange={v => set('stop_loss', v)}
-              placeholder="95"
-            />
-            <Field
-              label="Risque (€)"
-              value={form.risk_amount}
-              onChange={v => set('risk_amount', v)}
-              placeholder="50"
-            />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Field label="Stop loss (€)" value={form.stop_loss} onChange={v => set('stop_loss', v)} placeholder="95" />
+            <Field label="Risque (€)" value={form.risk_amount} onChange={v => set('risk_amount', v)} placeholder="50" />
           </div>
 
           {/* Statut */}
           <div>
-            <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wide">Statut</label>
-            <div className="flex gap-2">
+            <label style={{ display: 'block', fontSize: 11, color: '#848e9c', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Statut</label>
+            <div style={{ display: 'flex', gap: 8 }}>
               {(['open', 'closed'] as const).map(s => (
-                <button
-                  type="button"
-                  key={s}
+                <button type="button" key={s}
                   onClick={() => set('status', s)}
-                  className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                    form.status === s
-                      ? 'bg-indigo-900/60 text-indigo-300 ring-1 ring-indigo-700'
-                      : 'bg-gray-800/60 text-gray-500 hover:text-white hover:bg-gray-700/60'
-                  }`}
+                  style={{
+                    padding: '8px 16px', borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none', transition: 'all 0.15s',
+                    background: form.status === s ? '#0ecb8120' : '#0b0e11',
+                    color: form.status === s ? '#0ecb81' : '#848e9c',
+                    outline: form.status === s ? '1px solid #0ecb8150' : '1px solid #2b3139',
+                  }}
                 >
                   {s === 'open' ? '● Ouvert' : '✓ Fermé'}
                 </button>
@@ -217,69 +162,42 @@ export default function AddTradeModal({
 
           {/* Notes */}
           <div>
-            <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wide">Notes</label>
+            <label style={{ display: 'block', fontSize: 11, color: '#848e9c', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Notes</label>
             <textarea
               value={form.notes}
               onChange={e => set('notes', e.target.value)}
-              placeholder="Setup, raison du trade, émotions..."
+              placeholder="Setup, raison du trade..."
               rows={2}
-              className="w-full bg-gray-800/60 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors resize-none"
+              style={{ ...inputStyle, resize: 'none' }}
+              onFocus={e => (e.target.style.borderColor = '#0ecb81')}
+              onBlur={e => (e.target.style.borderColor = '#2b3139')}
             />
           </div>
 
-          {/* Erreur */}
           {error && (
-            <div className="bg-red-950/50 border border-red-800 rounded-xl px-4 py-2.5">
-              <p className="text-red-400 text-sm">⚠ {error}</p>
+            <div style={{ background: '#f6465d10', border: '1px solid #f6465d40', borderRadius: 10, padding: '10px 14px', color: '#f6465d', fontSize: 12 }}>
+              ⚠ {error}
             </div>
           )}
 
-          {/* Submit */}
-          <ShimmerButton
+          <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 text-sm font-medium rounded-xl disabled:opacity-40"
-            shimmerColor="#a78bfa"
-            background="linear-gradient(135deg, #4f46e5, #7c3aed)"
+            style={{
+              padding: '12px 0', borderRadius: 12, fontWeight: 700, fontSize: 14, border: 'none', cursor: loading ? 'wait' : 'pointer',
+              background: loading ? '#0ecb8180' : '#0ecb81',
+              color: '#0b0e11', transition: 'opacity 0.15s',
+            }}
           >
             {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <span style={{ width: 14, height: 14, border: '2px solid #0b0e1150', borderTopColor: '#0b0e11', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />
                 Enregistrement…
               </span>
-            ) : (
-              '✦ Enregistrer le trade'
-            )}
-          </ShimmerButton>
+            ) : '+ Enregistrer le trade'}
+          </button>
         </form>
-      </ShineBorder>
-    </div>
-  );
-}
-
-function Field({
-  label, value, onChange, placeholder, required, type = 'number',
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  required?: boolean;
-  type?: string;
-}) {
-  return (
-    <div>
-      <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wide">{label}</label>
-      <input
-        type={type}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        required={required}
-        step="any"
-        min="0"
-        className="input-field w-full"
-      />
+      </div>
     </div>
   );
 }

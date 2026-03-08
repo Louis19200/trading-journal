@@ -2,7 +2,7 @@
 
 import type { Trade } from '@/types';
 import { calcPnl, calcR } from '@/lib/metrics';
-import { BorderBeam } from '@/components/magicui/border-beam';
+import { useState } from 'react';
 
 const eur = (v: number) =>
   new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(v);
@@ -14,76 +14,137 @@ export default function TradesList({
   onEdit: (t: Trade) => void;
   onDelete: (id: string) => void;
 }) {
-  return (
-    <div className="relative bg-gray-900/80 border border-gray-800 rounded-2xl overflow-hidden">
-      <BorderBeam size={200} duration={15} colorFrom="#6366f1" colorTo="#8b5cf6" borderWidth={1} />
+  const [filter, setFilter] = useState<'all' | 'open' | 'closed'>('all');
 
-      <div className="px-5 py-4 border-b border-gray-800/50 flex items-center justify-between">
-        <h2 className="font-semibold text-white">Historique</h2>
-        <span className="text-gray-500 text-sm bg-gray-800 px-2.5 py-0.5 rounded-full">{trades.length} trades</span>
+  const filtered = trades.filter(t =>
+    filter === 'all' ? true : t.status === filter
+  );
+
+  return (
+    <div className="rounded-xl border overflow-hidden" style={{ background: '#161a1e', borderColor: '#2b3139' }}>
+      {/* Header */}
+      <div className="px-5 py-3 border-b flex items-center justify-between gap-3 flex-wrap"
+        style={{ borderColor: '#2b3139' }}>
+        <div className="flex items-center gap-2">
+          <p className="font-semibold text-white text-sm">Historique des trades</p>
+          <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: '#2b3139', color: '#848e9c' }}>
+            {trades.length}
+          </span>
+        </div>
+        {/* Filter tabs */}
+        <div className="flex items-center gap-1 rounded-lg p-0.5" style={{ background: '#0b0e11' }}>
+          {(['all', 'open', 'closed'] as const).map(f => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className="px-3 py-1 rounded-md text-xs font-medium transition-all capitalize"
+              style={{
+                background: filter === f ? '#2b3139' : 'transparent',
+                color: filter === f ? '#eaecef' : '#848e9c',
+              }}
+            >
+              {f === 'all' ? 'Tous' : f === 'open' ? 'Ouverts' : 'Fermés'}
+            </button>
+          ))}
+        </div>
       </div>
 
+      {/* Table */}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-gray-500 text-xs uppercase border-b border-gray-800/50">
-              {['Symbole', 'Direction', 'Entrée', 'Sortie', 'Qté', 'P&L', 'R', 'Statut', ''].map((h, i) => (
-                <th key={i} className={`px-4 py-3 font-medium tracking-wider ${i === 0 ? 'text-left' : 'text-right'}`}>{h}</th>
+            <tr style={{ borderBottom: '1px solid #2b3139' }}>
+              {['#', 'Symbole', 'Direction', 'Entrée', 'Sortie', 'Qté', 'P&L', 'R', 'Statut', ''].map((h, i) => (
+                <th
+                  key={i}
+                  className="px-4 py-2.5 text-xs font-medium uppercase tracking-wider"
+                  style={{ color: '#848e9c', textAlign: i <= 1 ? 'left' : 'right' }}
+                >
+                  {h}
+                </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {trades.map(t => {
+            {filtered.map((t, idx) => {
               const pnl = calcPnl(t);
               const r = calcR(t);
-              const pnlColor = t.status === 'open' ? 'text-gray-400' : pnl >= 0 ? 'text-green-400' : 'text-red-400';
+              const isOpen = t.status === 'open';
+              const pnlColor = isOpen ? '#848e9c' : pnl >= 0 ? '#0ecb81' : '#f6465d';
 
               return (
                 <tr
                   key={t.id}
-                  className="border-t border-gray-800/40 hover:bg-white/[0.02] transition-colors group"
+                  className="group transition-colors"
+                  style={{ borderBottom: '1px solid #1e2329' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = '#1e2329')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
+                  <td className="px-4 py-3.5 text-xs" style={{ color: '#474d57' }}>{idx + 1}</td>
                   <td className="px-4 py-3.5">
-                    <p className="font-semibold text-white group-hover:text-indigo-300 transition-colors">{t.symbol.toUpperCase()}</p>
-                    <p className="text-gray-600 text-xs mt-0.5">{t.entry_date}</p>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black"
+                        style={{ background: '#2b3139', color: '#eaecef' }}>
+                        {t.symbol.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-white text-xs">{t.symbol.toUpperCase()}</p>
+                        <p className="text-xs" style={{ color: '#474d57' }}>{t.entry_date}</p>
+                      </div>
+                    </div>
                   </td>
                   <td className="px-4 py-3.5 text-right">
-                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
-                      t.direction === 'long'
-                        ? 'bg-green-950 text-green-400 ring-1 ring-green-800'
-                        : 'bg-red-950 text-red-400 ring-1 ring-red-800'
-                    }`}>
-                      {t.direction === 'long' ? '▲ LONG' : '▼ SHORT'}
+                    <span className="text-xs font-bold px-2 py-0.5 rounded"
+                      style={{
+                        background: t.direction === 'long' ? '#0ecb8115' : '#f6465d15',
+                        color: t.direction === 'long' ? '#0ecb81' : '#f6465d',
+                      }}>
+                      {t.direction === 'long' ? '▲' : '▼'} {t.direction.toUpperCase()}
                     </span>
                   </td>
-                  <td className="px-4 py-3.5 text-right text-gray-300">{eur(t.entry_price)}</td>
-                  <td className="px-4 py-3.5 text-right text-gray-300">
-                    {t.exit_price ? eur(t.exit_price) : <span className="text-gray-700">—</span>}
+                  <td className="px-4 py-3.5 text-right text-xs num" style={{ color: '#eaecef' }}>
+                    {eur(t.entry_price)}
                   </td>
-                  <td className="px-4 py-3.5 text-right text-gray-400">{t.quantity}</td>
-                  <td className={`px-4 py-3.5 text-right font-semibold ${pnlColor}`}>
-                    {t.status === 'open' ? <span className="text-gray-700">—</span> : (
-                      <span>{pnl >= 0 ? '+' : ''}{eur(pnl)}</span>
+                  <td className="px-4 py-3.5 text-right text-xs num" style={{ color: '#eaecef' }}>
+                    {t.exit_price ? eur(t.exit_price) : <span style={{ color: '#474d57' }}>—</span>}
+                  </td>
+                  <td className="px-4 py-3.5 text-right text-xs num" style={{ color: '#848e9c' }}>
+                    {t.quantity}
+                  </td>
+                  <td className="px-4 py-3.5 text-right text-xs font-bold num" style={{ color: pnlColor }}>
+                    {isOpen ? <span style={{ color: '#474d57' }}>—</span> : (
+                      <>{pnl >= 0 ? '+' : ''}{eur(pnl)}</>
                     )}
                   </td>
-                  <td className={`px-4 py-3.5 text-right text-xs font-medium ${
-                    r !== null ? (r >= 0 ? 'text-green-400' : 'text-red-400') : 'text-gray-700'
-                  }`}>
+                  <td className="px-4 py-3.5 text-right text-xs font-medium num"
+                    style={{ color: r !== null ? (r >= 0 ? '#0ecb81' : '#f6465d') : '#474d57' }}>
                     {r !== null ? `${r >= 0 ? '+' : ''}${r.toFixed(2)}R` : '—'}
                   </td>
                   <td className="px-4 py-3.5 text-right">
-                    <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                      t.status === 'open'
-                        ? 'bg-blue-950 text-blue-400 ring-1 ring-blue-800'
-                        : 'bg-gray-800 text-gray-500'
-                    }`}>
-                      {t.status === 'open' ? '● Ouvert' : '✓ Fermé'}
+                    <span className="text-xs px-2 py-0.5 rounded font-medium"
+                      style={{
+                        background: isOpen ? '#00b4d815' : '#2b3139',
+                        color: isOpen ? '#00b4d8' : '#848e9c',
+                      }}>
+                      {isOpen ? '● Live' : '✓ Closed'}
                     </span>
                   </td>
                   <td className="px-4 py-3.5 text-right">
-                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => onEdit(t)} className="text-gray-600 hover:text-indigo-400 transition-colors p-1 rounded hover:bg-indigo-950">✎</button>
-                      <button onClick={() => onDelete(t.id)} className="text-gray-600 hover:text-red-400 transition-colors p-1 rounded hover:bg-red-950">✕</button>
+                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => onEdit(t)}
+                        className="w-6 h-6 rounded flex items-center justify-center text-xs transition-colors"
+                        style={{ color: '#848e9c' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#2b3139'; e.currentTarget.style.color = '#0ecb81'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#848e9c'; }}
+                      >✎</button>
+                      <button
+                        onClick={() => onDelete(t.id)}
+                        className="w-6 h-6 rounded flex items-center justify-center text-xs transition-colors"
+                        style={{ color: '#848e9c' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#f6465d15'; e.currentTarget.style.color = '#f6465d'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#848e9c'; }}
+                      >✕</button>
                     </div>
                   </td>
                 </tr>

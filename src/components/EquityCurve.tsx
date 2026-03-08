@@ -1,7 +1,9 @@
 'use client';
 
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { BorderBeam } from '@/components/magicui/border-beam';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, ReferenceLine, Area, AreaChart,
+} from 'recharts';
 
 const eur = (v: number) =>
   new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(v);
@@ -10,62 +12,68 @@ export default function EquityCurve({ data }: { data: { date: string; value: num
   if (data.length < 2) return null;
 
   const last = data[data.length - 1].value;
-  const isPositive = last >= 0;
-  const color = isPositive ? '#10b981' : '#ef4444';
+  const isUp = last >= 0;
+  const color = isUp ? '#0ecb81' : '#f6465d';
+  const colorFade = isUp ? '#0ecb8120' : '#f6465d20';
 
   return (
-    <div className="relative bg-gray-900/80 border border-gray-800 rounded-2xl p-5 overflow-hidden">
-      <BorderBeam
-        size={300}
-        duration={10}
-        colorFrom={isPositive ? '#10b981' : '#ef4444'}
-        colorTo={isPositive ? '#6366f1' : '#f59e0b'}
-        borderWidth={1.5}
-      />
-      <div className="flex items-center justify-between mb-5">
+    <div className="rounded-xl border p-5" style={{ background: '#161a1e', borderColor: '#2b3139' }}>
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="font-semibold text-white">Equity Curve</h2>
-          <p className="text-gray-500 text-xs mt-0.5">{data.length} trades fermés</p>
+          <p className="text-xs uppercase tracking-widest font-medium" style={{ color: '#848e9c' }}>Equity Curve</p>
+          <p className="text-lg font-bold num mt-0.5" style={{ color }}>
+            {isUp ? '+' : ''}{eur(last)}
+          </p>
         </div>
-        <div className={`text-sm font-semibold px-3 py-1 rounded-full ${isPositive ? 'bg-green-900/40 text-green-400' : 'bg-red-900/40 text-red-400'}`}>
-          {isPositive ? '▲' : '▼'} {eur(last)}
+        <div className="flex items-center gap-2">
+          <span className="text-xs px-2.5 py-1 rounded-full font-medium num"
+            style={{ background: isUp ? '#0ecb8115' : '#f6465d15', color }}>
+            {isUp ? '▲' : '▼'} {data.length} trades
+          </span>
         </div>
       </div>
-      <ResponsiveContainer width="100%" height={200}>
-        <LineChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+
+      <ResponsiveContainer width="100%" height={180}>
+        <AreaChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
           <defs>
-            <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor={color} stopOpacity={0.6} />
-              <stop offset="100%" stopColor={isPositive ? '#6366f1' : '#f59e0b'} stopOpacity={1} />
+            <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity={0.2} />
+              <stop offset="100%" stopColor={color} stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#2b3139" vertical={false} />
           <XAxis
             dataKey="date"
-            tick={{ fill: '#4b5563', fontSize: 10 }}
+            tick={{ fill: '#474d57', fontSize: 10 }}
+            axisLine={false}
+            tickLine={false}
             tickFormatter={d => new Date(d).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' })}
           />
           <YAxis
-            tick={{ fill: '#4b5563', fontSize: 10 }}
+            tick={{ fill: '#474d57', fontSize: 10 }}
+            axisLine={false}
+            tickLine={false}
             tickFormatter={v => `${v >= 0 ? '+' : ''}${v.toFixed(0)}€`}
-            width={60}
+            width={55}
           />
           <Tooltip
             formatter={(value) => [eur(Number(value ?? 0)), 'Equity']}
             labelFormatter={d => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-            contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 12 }}
-            itemStyle={{ color: '#fff' }}
+            contentStyle={{ background: '#1e2329', border: '1px solid #2b3139', borderRadius: 10, fontSize: 12 }}
+            itemStyle={{ color: '#eaecef' }}
+            labelStyle={{ color: '#848e9c' }}
           />
-          <ReferenceLine y={0} stroke="#374151" strokeDasharray="4 4" />
-          <Line
+          <ReferenceLine y={0} stroke="#2b3139" strokeDasharray="4 4" />
+          <Area
             type="monotone"
             dataKey="value"
-            stroke="url(#lineGrad)"
-            strokeWidth={2.5}
+            stroke={color}
+            strokeWidth={2}
+            fill="url(#grad)"
             dot={false}
-            activeDot={{ r: 5, fill: color, strokeWidth: 0 }}
+            activeDot={{ r: 4, fill: color, strokeWidth: 0 }}
           />
-        </LineChart>
+        </AreaChart>
       </ResponsiveContainer>
     </div>
   );
