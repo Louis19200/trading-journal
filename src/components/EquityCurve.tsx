@@ -28,7 +28,7 @@ export default function EquityCurve({ data }: { data: { date: string; value: num
             width={60}
           />
           <Tooltip
-            formatter={(value: number) => [eur(value), 'Equity']}
+            formatter={(value) => [eur(Number(value ?? 0)), 'Equity']}
             labelFormatter={d => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
             contentStyle={{ background: '#111827', border: '1px solid #374151', borderRadius: 8 }}
             itemStyle={{ color: '#fff' }}
