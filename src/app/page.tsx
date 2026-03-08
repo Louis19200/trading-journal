@@ -1,65 +1,109 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useEffect, useState, useCallback } from 'react';
+import { createClient } from '@/lib/supabase-client';
+import { computeMetrics, buildEquityCurve } from '@/lib/metrics';
+import type { Trade } from '@/types';
+import MetricsGrid from '@/components/MetricsGrid';
+import TradesList from '@/components/TradesList';
+import EquityCurve from '@/components/EquityCurve';
+import AddTradeModal from '@/components/AddTradeModal';
+import EditTradeModal from '@/components/EditTradeModal';
+
+export default function HomePage() {
+  const [trades, setTrades] = useState<Trade[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [editTrade, setEditTrade] = useState<Trade | null>(null);
+  const supabase = createClient();
+
+  const fetchTrades = useCallback(async () => {
+    const { data } = await supabase
+      .from('trades')
+      .select('*')
+      .order('entry_date', { ascending: false });
+    setTrades(data ?? []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetchTrades(); }, [fetchTrades]);
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    window.location.href = '/auth/login';
+  }
+
+  async function handleDelete(id: string) {
+    await supabase.from('trades').delete().eq('id', id);
+    setTrades(prev => prev.filter(t => t.id !== id));
+  }
+
+  const metrics = computeMetrics(trades);
+  const equityCurve = buildEquityCurve(trades);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="min-h-screen bg-gray-950 text-white">
+      <header className="border-b border-gray-800 px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-7 h-7 bg-indigo-600 rounded-md flex items-center justify-center text-xs font-bold">T</div>
+          <span className="font-semibold tracking-tight">Trading Journal</span>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowAdd(true)}
+            className="bg-indigo-600 hover:bg-indigo-500 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+            + Nouveau trade
+          </button>
+          <button
+            onClick={handleLogout}
+            className="text-gray-400 hover:text-white text-sm transition-colors"
+          >
+            Déconnexion
+          </button>
+        </div>
+      </header>
+
+      <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+        {loading ? (
+          <div className="flex items-center justify-center py-24">
+            <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : trades.length === 0 ? (
+          <div className="text-center py-24">
+            <p className="text-4xl mb-3">📋</p>
+            <p className="text-gray-300 font-medium">Aucun trade enregistré</p>
+            <p className="text-gray-500 text-sm mt-1">Clique sur "+ Nouveau trade" pour commencer</p>
+          </div>
+        ) : (
+          <>
+            <MetricsGrid metrics={metrics} />
+            <EquityCurve data={equityCurve} />
+            <TradesList
+              trades={trades}
+              onEdit={setEditTrade}
+              onDelete={handleDelete}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+          </>
+        )}
+      </div>
+
+      {showAdd && (
+        <AddTradeModal
+          onClose={() => setShowAdd(false)}
+          onSaved={(trade) => { setTrades(prev => [trade, ...prev]); setShowAdd(false); }}
+        />
+      )}
+      {editTrade && (
+        <EditTradeModal
+          trade={editTrade}
+          onClose={() => setEditTrade(null)}
+          onSaved={(updated) => {
+            setTrades(prev => prev.map(t => t.id === updated.id ? updated : t));
+            setEditTrade(null);
+          }}
+        />
+      )}
+    </main>
   );
 }
